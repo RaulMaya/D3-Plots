@@ -64,42 +64,35 @@ d3.csv("data/revenues.csv").then(data => {
 
 function update(data) {
     const value = flag ? "profit" : "revenue"
+    const t = d3.transition().duration(750)
+
     x.domain(data.map(d => d.month))
     y.domain([0, d3.max(data, d => d[value])])
 
     const xAxisCall = d3.axisBottom(x)
-    xAxisGroup
+    xAxisGroup.transition(t)
         .call(xAxisCall)
 
     const yAxisCall = d3.axisLeft(y)
         .tickFormat(d => "$" + d)
         .ticks(5)
-    yAxisGroup
+    yAxisGroup.transition(t)
         .call(yAxisCall)
 
     const bars = g.selectAll("rect")
         .data(data)
 
-    bars.exit().remove()
-
-    bars.attr("y", d => y(d[value]))
-        .attr("x", d => x(d.month))
-        .attr("width", x.bandwidth)
-        .attr("height", d => HEIGHT - y(d[value]))
-        .attr("fill", () => {
-            if (value === "revenue") {
-                return "green"
-            } else {
-                return "#527853"
-            }
-        })
+    bars.exit().transition(t).remove()
 
     bars.enter().append("rect")
+        .attr("y", y(0))
+        .attr("height", 0)
+        .merge(bars)
+        .transition(t)
         .attr("y", d => y(d[value]))
-        .attr("x", d => x(d.month))
-        .attr("width", x.bandwidth)
         .attr("height", d => HEIGHT - y(d[value]))
-        .attr("fill", () => {
+        .attr("x", d => x(d.month))
+        .attr("width", x.bandwidth).attr("fill", () => {
             if (value === "revenue") {
                 return "green"
             } else {
