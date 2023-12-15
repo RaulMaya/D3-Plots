@@ -47,6 +47,10 @@ d3.json("data/data.json").then(function (data) {
 	data = data[0]
 	console.log(data)
 
+
+})
+
+function update(data) {
 	g.append("text")
 		.attr("class", "x axis-label")
 		.attr("x", WIDTH - 30)
@@ -99,4 +103,4 @@ d3.json("data/data.json").then(function (data) {
 		.attr("cy", (d) => y(d.life_exp))
 		.attr("r", 5)
 		.attr("fill", d => colorScale(d.continent));
-})
+}
