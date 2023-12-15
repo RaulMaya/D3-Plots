@@ -6,6 +6,7 @@
 const MARGIN = { LEFT: 100, RIGHT: 10, TOP: 10, BOTTOM: 100 }
 const WIDTH = 800 - MARGIN.LEFT - MARGIN.RIGHT
 const HEIGHT = 600 - MARGIN.TOP - MARGIN.BOTTOM
+let c = 0
 
 const svg = d3.select("#chart-area").append("svg")
 	.attr("width", WIDTH + MARGIN.LEFT + MARGIN.RIGHT)
@@ -33,6 +34,34 @@ g.append("text")
 	.attr("transform", "rotate(-90)")
 	.text("GDP Per Capita ($)")
 
+const year = g.append("text")
+	.attr("class", "x axis-label")
+	.attr("x", WIDTH - 30)
+	.attr("y", HEIGHT - 20)
+	.attr("font-size", "35px")
+	.attr("text-anchor", "middle")
+	.style("fill", "lightgray")
+	.style("font-weight", "bold")  // Make the text bold
+
+
+const x = d3.scaleLog()
+	.range([0, WIDTH])
+	.base(10)
+
+const y = d3.scaleLinear()
+	.range([HEIGHT, 0])
+
+// Define a color scale
+const colorScale = d3.scaleOrdinal()
+	.range(["#FFE382", "#4CB9E7", "#65B741", "#EF4040"]);
+
+const xAxisGroup = g.append("g")
+	.attr("class", "x axis")
+	.attr("transform", `translate(0, ${HEIGHT})`)
+
+const yAxisGroup = g.append("g")
+	.attr("class", "y axis")
+
 d3.json("data/data.json").then(function (data) {
 	data.forEach(d => {
 		d.year = Number(d.year)
@@ -44,43 +73,23 @@ d3.json("data/data.json").then(function (data) {
 
 	console.log(uniqueContinents)
 
-	data = data[0]
-	console.log(data)
-
+	d3.interval(() => {
+		const newData = data[c]
+		update(newData, uniqueContinents)
+		c += 1
+	}, 1000)
 
 })
 
-function update(data) {
-	g.append("text")
-		.attr("class", "x axis-label")
-		.attr("x", WIDTH - 30)
-		.attr("y", HEIGHT - 20)
-		.attr("font-size", "35px")
-		.attr("text-anchor", "middle")
-		.style("fill", "lightgray")
-		.style("font-weight", "bold")  // Make the text bold
-		.text(data.year);
+function update(data, uniqueContinents) {
+	const t = d3.transition().duration(750)
+	
+	year.text(data.year);
 
-	const x = d3.scaleLog()
-		.domain([1, d3.max(data.countries, (d) => d.income)])
-		.range([0, WIDTH])
-		.base(10)
+	x.domain([1, d3.max(data.countries, (d) => d.income)])
+	y.domain([0, d3.max(data.countries, (d, i) => d.life_exp)])
+	colorScale.domain(uniqueContinents)
 
-	const y = d3.scaleLinear()
-		.domain([0, d3.max(data.countries, (d, i) => d.life_exp)])
-		.range([HEIGHT, 0])
-
-	// Define a color scale
-	const colorScale = d3.scaleOrdinal()
-		.domain(uniqueContinents)
-		.range(["#FFE382", "#4CB9E7", "#65B741", "#EF4040"]);
-
-	const xAxisGroup = g.append("g")
-		.attr("class", "x axis")
-		.attr("transform", `translate(0, ${HEIGHT})`)
-
-	const yAxisGroup = g.append("g")
-		.attr("class", "y axis")
 
 	const circles = g.selectAll("circle")
 		.data(data.countries)
@@ -98,9 +107,15 @@ function update(data) {
 
 	yAxisGroup.call(yAxisCall)
 
+	// EXIT old elements not present in new data.
+	circles.exit().remove()
+
 	circles.enter().append("circle")
+		.attr("r", 5)
+		.attr("fill", d => colorScale(d.continent))
+		.merge(circles)
+		.transition(t)
 		.attr("cx", (d) => x(d.income))
 		.attr("cy", (d) => y(d.life_exp))
-		.attr("r", 5)
-		.attr("fill", d => colorScale(d.continent));
+
 }
