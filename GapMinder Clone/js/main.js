@@ -14,6 +14,8 @@ const svg = d3.select("#chart-area").append("svg")
 	.attr("width", WIDTH + MARGIN.LEFT + MARGIN.RIGHT)
 	.attr("height", HEIGHT + MARGIN.TOP + MARGIN.BOTTOM)
 
+const tooltip = d3.select("#tooltip");
+
 const g = svg.append("g")
 	.attr("transform", `translate(${MARGIN.LEFT}, ${MARGIN.TOP})`)
 
@@ -131,6 +133,14 @@ function update(data, uniqueContinents) {
 		.attr("opacity", 0.7)
 		.attr("stroke", "black")
 		.attr("stroke-width", 2)
+		.on("mouseover", function (d, event) {
+			console.log(d)
+			tooltip.style("opacity", 1)
+				.html(`Country: ${d.country}`) // Add any relevant data
+		})
+		.on("mouseout", function () {
+			tooltip.style("opacity", 0);
+		})
 		.merge(circles)
 		.transition(t)
 		.attr("cx", (d) => x(d.income))
