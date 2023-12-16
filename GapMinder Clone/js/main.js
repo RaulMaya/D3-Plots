@@ -4,8 +4,10 @@
 *    Project 2 - Gapminder Clone
 */
 const MARGIN = { LEFT: 100, RIGHT: 10, TOP: 10, BOTTOM: 100 }
-const WIDTH = 800 - MARGIN.LEFT - MARGIN.RIGHT
-const HEIGHT = 600 - MARGIN.TOP - MARGIN.BOTTOM
+const WIDTH = 900 - MARGIN.LEFT - MARGIN.RIGHT
+const HEIGHT = 500 - MARGIN.TOP - MARGIN.BOTTOM
+
+let year = 1800
 let c = 0
 
 const svg = d3.select("#chart-area").append("svg")
@@ -16,7 +18,7 @@ const g = svg.append("g")
 	.attr("transform", `translate(${MARGIN.LEFT}, ${MARGIN.TOP})`)
 
 // X label
-g.append("text")
+const xLabel = g.append("text")
 	.attr("class", "x axis-label")
 	.attr("x", WIDTH / 2)
 	.attr("y", HEIGHT + 60)
@@ -25,7 +27,7 @@ g.append("text")
 	.text("Life Expectancy (Years)")
 
 // Y label
-g.append("text")
+const yLabel = g.append("text")
 	.attr("class", "y axis-label")
 	.attr("x", - (HEIGHT / 2))
 	.attr("y", -60)
@@ -34,7 +36,7 @@ g.append("text")
 	.attr("transform", "rotate(-90)")
 	.text("GDP Per Capita ($)")
 
-const year = g.append("text")
+const yearLabel = g.append("text")
 	.attr("class", "x axis-label")
 	.attr("x", WIDTH - 30)
 	.attr("y", HEIGHT - 20)
@@ -42,18 +44,23 @@ const year = g.append("text")
 	.attr("text-anchor", "middle")
 	.style("fill", "lightgray")
 	.style("font-weight", "bold")  // Make the text bold
-
+	.text(year);
 
 const x = d3.scaleLog()
 	.range([0, WIDTH])
 	.base(10)
+	.domain([142, 150000])
 
 const y = d3.scaleLinear()
 	.range([HEIGHT, 0])
+	.domain([0, 90])
 
 // Define a color scale
 const colorScale = d3.scaleOrdinal()
 	.range(["#FFE382", "#4CB9E7", "#65B741", "#EF4040"]);
+
+const radiusScale = d3.scaleSqrt()
+	.range([7, 35]);
 
 const xAxisGroup = g.append("g")
 	.attr("class", "x axis")
@@ -62,10 +69,31 @@ const xAxisGroup = g.append("g")
 const yAxisGroup = g.append("g")
 	.attr("class", "y axis")
 
+const xAxisCall = d3.axisBottom(x)
+	.ticks(3)
+	.tickFormat(d => "$" + d)
+xAxisGroup.call(xAxisCall)
+	.selectAll("text")
+	.attr("y", "10")
+	.attr("x", "0")
+	.attr("text-anchor", "center")
+
+const yAxisCall = d3.axisLeft(y)
+
+yAxisGroup.call(yAxisCall)
+
 d3.json("data/data.json").then(function (data) {
-	data.forEach(d => {
-		d.year = Number(d.year)
+	const formattedData = data.map(year => {
+		return year["countries"].filter(country => {
+			const dataExists = (country.income && country.life_exp)
+			return dataExists
+		}).map(country => {
+			country.income = Number(country.income)
+			country.life_exp = Number(country.life_exp)
+			return country
+		})
 	})
+
 
 	const uniqueContinents = Array.from(new Set(data.flatMap(d =>
 		d.countries.map(country => country.continent)
@@ -74,48 +102,39 @@ d3.json("data/data.json").then(function (data) {
 	console.log(uniqueContinents)
 
 	d3.interval(() => {
-		const newData = data[c]
-		update(newData, uniqueContinents)
-		c += 1
-	}, 1000)
+		c = (c < 214) ? c + 1 : 0
+		update(formattedData[c], uniqueContinents)
+	}, 100)
 
+	update(formattedData[0])
 })
 
 function update(data, uniqueContinents) {
-	const t = d3.transition().duration(750)
-	
-	year.text(data.year);
+	const t = d3.transition().duration(100)
+	const minPop = d3.min(data, d => d.population);
+	const maxPop = d3.max(data, d => d.population);
 
-	x.domain([1, d3.max(data.countries, (d) => d.income)])
-	y.domain([0, d3.max(data.countries, (d, i) => d.life_exp)])
+
+	yearLabel.text(year + c);
+
 	colorScale.domain(uniqueContinents)
+	radiusScale.domain([minPop, maxPop])
 
 
 	const circles = g.selectAll("circle")
-		.data(data.countries)
+		.data(data, d => d.country)
 
-	const xAxisCall = d3.axisBottom(x)
-		.ticks(3)
-		.tickFormat(d => "$" + d)
-	xAxisGroup.call(xAxisCall)
-		.selectAll("text")
-		.attr("y", "10")
-		.attr("x", "0")
-		.attr("text-anchor", "center")
-
-	const yAxisCall = d3.axisLeft(y)
-
-	yAxisGroup.call(yAxisCall)
-
-	// EXIT old elements not present in new data.
 	circles.exit().remove()
 
 	circles.enter().append("circle")
-		.attr("r", 5)
 		.attr("fill", d => colorScale(d.continent))
+		.attr("opacity", 0.7)
+		.attr("stroke", "black")
+		.attr("stroke-width", 2)
 		.merge(circles)
 		.transition(t)
 		.attr("cx", (d) => x(d.income))
 		.attr("cy", (d) => y(d.life_exp))
+		.attr("r", d => radiusScale(d.population))
 
 }
