@@ -8,7 +8,11 @@ const WIDTH = 900 - MARGIN.LEFT - MARGIN.RIGHT
 const HEIGHT = 500 - MARGIN.TOP - MARGIN.BOTTOM
 
 let year = 1800
-let c = 0
+let time = 0
+let interval
+let formattedData
+
+const setContinents = ["europe", "asia", "americas", "africa"]
 
 const svg = d3.select("#chart-area").append("svg")
 	.attr("width", WIDTH + MARGIN.LEFT + MARGIN.RIGHT)
@@ -97,7 +101,7 @@ yAxisGroup.call(yAxisCall)
 const legends = g.append("g").attr("transform", `translater(${WIDTH - 10}, ${HEIGHT - 125})`)
 
 d3.json("data/data.json").then(function (data) {
-	const formattedData = data.map(year => {
+	formattedData = data.map(year => {
 		return year["countries"].filter(country => {
 			const dataExists = (country.income && country.life_exp)
 			return dataExists
@@ -107,7 +111,6 @@ d3.json("data/data.json").then(function (data) {
 			return country
 		})
 	})
-
 
 	const uniqueContinents = Array.from(new Set(data.flatMap(d =>
 		d.countries.map(country => country.continent)
@@ -131,29 +134,58 @@ d3.json("data/data.json").then(function (data) {
 			.text(continent)
 	})
 
-
-	d3.interval(() => {
-		c = (c < 214) ? c + 1 : 0
-		update(formattedData[c], uniqueContinents)
-	}, 100)
-
-	update(formattedData[0])
+	update(formattedData[0], uniqueContinents)
 })
+
+function step() {
+	time = (time < 214) ? time + 1 : 0
+	update(formattedData[time], setContinents)
+}
+
+$("#play-button")
+	.on("click", function () {
+		const button = $(this)
+		if (button.text() === "Play") {
+			button.text("Pause")
+			interval = setInterval(step, 100)
+		} else {
+			button.text("Play")
+			clearInterval(interval)
+		}
+	})
+
+$("#reset-button")
+	.on("click", function () {
+		time = 0
+		update(formattedData[0], setContinents)
+	})
+
+$("#continent-select")
+	.on("change", () => {
+		update(formattedData[time], setContinents)
+	})
 
 function update(data, uniqueContinents) {
 	const t = d3.transition().duration(100)
 	const minPop = d3.min(data, d => d.population);
 	const maxPop = d3.max(data, d => d.population);
 
+	const continent = $("#continent-select").val()
 
-	yearLabel.text(year + c);
+	const filteredContinent = data.filter(d => {
+		if (continent === "all") return true
+		else {
+			return d.continent == continent
+		}
+	})
+	yearLabel.text(year + time);
 
 	colorScale.domain(uniqueContinents)
 	radiusScale.domain([minPop, maxPop])
 
 
 	const circles = g.selectAll("circle")
-		.data(data, d => d.country)
+		.data(filteredContinent, d => d.country)
 
 	circles.exit().remove()
 
@@ -162,8 +194,14 @@ function update(data, uniqueContinents) {
 		.attr("opacity", 0.7)
 		.attr("stroke", "black")
 		.attr("stroke-width", 2)
-		.on("mouseover", tip.show)
-		.on("mouseout", tip.hide)
+		.on("mouseover", function (d) {
+			d3.select(this).style("cursor", "pointer");
+			tip.show(d, this);
+		})
+		.on("mouseout", function (d) {
+			d3.select(this).style("cursor", "default");
+			tip.hide(d, this);
+		})
 		.merge(circles)
 		.transition(t)
 		.attr("cx", (d) => x(d.income))
