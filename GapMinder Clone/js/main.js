@@ -51,7 +51,7 @@ const yearLabel = g.append("text")
 const x = d3.scaleLog()
 	.range([0, WIDTH])
 	.base(10)
-	.domain([142, 150000])
+	.domain([142, 200000])
 
 const y = d3.scaleLinear()
 	.range([HEIGHT, 0])
@@ -107,15 +107,15 @@ d3.json("data/data.json").then(function (data) {
 		const legendRow = legends.append("g").attr("transform", `translate(0, ${i * 20})`)
 
 		legendRow.append("rect")
-			.attr("x", 780)
-			.attr("y", 240)
+			.attr("x", 790)
+			.attr("y", 260)
 			.attr("width", 10)
 			.attr("height", 10)
 			.attr("fill", colorScale(continent))
 
 		legendRow.append("text")
-			.attr("x", 770)
-			.attr("y", 250)
+			.attr("x", 780)
+			.attr("y", 270)
 			.attr("text-anchor", "end")
 			.style("text-transform", "capitalize")
 			.text(continent)
@@ -155,7 +155,12 @@ function update(data, uniqueContinents) {
 		.on("mouseover", function (d, event) {
 			console.log(d)
 			tooltip.style("opacity", 1)
-				.html(`Country: ${d.country}`) // Add any relevant data
+				.html(`
+				Country: ${d.country}<br> 
+				Continent: ${d.continent}<br>
+				Income: ${d.income}<br>
+				Population: ${d.population}<br>
+				Life Exp: ${d.life_exp}<br>`) // Add any relevant data
 		})
 		.on("mouseout", function () {
 			tooltip.style("opacity", 0);
