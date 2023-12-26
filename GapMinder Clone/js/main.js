@@ -84,6 +84,8 @@ const yAxisCall = d3.axisLeft(y)
 
 yAxisGroup.call(yAxisCall)
 
+const legends = g.append("g").attr("transform", `translater(${WIDTH - 10}, ${HEIGHT - 125})`)
+
 d3.json("data/data.json").then(function (data) {
 	const formattedData = data.map(year => {
 		return year["countries"].filter(country => {
@@ -101,7 +103,24 @@ d3.json("data/data.json").then(function (data) {
 		d.countries.map(country => country.continent)
 	)));
 
-	console.log(uniqueContinents)
+	uniqueContinents.forEach((continent, i) => {
+		const legendRow = legends.append("g").attr("transform", `translate(0, ${i * 20})`)
+
+		legendRow.append("rect")
+			.attr("x", 780)
+			.attr("y", 240)
+			.attr("width", 10)
+			.attr("height", 10)
+			.attr("fill", colorScale(continent))
+
+		legendRow.append("text")
+			.attr("x", 770)
+			.attr("y", 250)
+			.attr("text-anchor", "end")
+			.style("text-transform", "capitalize")
+			.text(continent)
+	})
+
 
 	d3.interval(() => {
 		c = (c < 214) ? c + 1 : 0
