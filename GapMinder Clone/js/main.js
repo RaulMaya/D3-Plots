@@ -165,6 +165,16 @@ $("#continent-select")
 		update(formattedData[time], setContinents)
 	})
 
+$('#date-slider').slider({
+	min: 1800,
+	max: 2014,
+	step: 1,
+	slide: (event, ui) => {
+		time = ui.value - 1800
+		update(formattedData[time], setContinents)
+	}
+})
+
 function update(data, uniqueContinents) {
 	const t = d3.transition().duration(100)
 	const minPop = d3.min(data, d => d.population);
@@ -208,4 +218,6 @@ function update(data, uniqueContinents) {
 		.attr("cy", (d) => y(d.life_exp))
 		.attr("r", d => radiusScale(d.population))
 
+	$("#year")[0].innerHTML = String(time + 1800)
+	$("#date-slider").slider("value", Number(time + 1800))
 }
