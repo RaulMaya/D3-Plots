@@ -14,8 +14,6 @@ const svg = d3.select("#chart-area").append("svg")
 	.attr("width", WIDTH + MARGIN.LEFT + MARGIN.RIGHT)
 	.attr("height", HEIGHT + MARGIN.TOP + MARGIN.BOTTOM)
 
-const tooltip = d3.select("#tooltip");
-
 const g = svg.append("g")
 	.attr("transform", `translate(${MARGIN.LEFT}, ${MARGIN.TOP})`)
 
@@ -47,6 +45,18 @@ const yearLabel = g.append("text")
 	.style("fill", "lightgray")
 	.style("font-weight", "bold")  // Make the text bold
 	.text(year);
+
+const tip = d3.tip()
+	.attr("class", "d3-tip")
+	.html(d => {
+		let text = `<strong>Country:</strong> <span style='color:red; text-transform:capitalize'>${d.country}</span><br>`
+		text += `<strong>Continent:</strong> <span style='color:red; text-transform:capitalize'>${d.continent}</span><br>`
+		text += `<strong>Life Expectacy:</strong> <span style='color:red'>${d3.format(".2f")(d.life_exp)}</span><br>`
+		text += `<strong>GDP Per Capita:</strong> <span style='color:red'>${d3.format("$,.0f")(d.income)}</span><br>`
+		text += `<strong>Populationn:</strong> <span style='color:red'>${d3.format(",.0f")(d.population)}</span><br>`
+		return text
+	})
+g.call(tip)
 
 const x = d3.scaleLog()
 	.range([0, WIDTH])
@@ -152,19 +162,8 @@ function update(data, uniqueContinents) {
 		.attr("opacity", 0.7)
 		.attr("stroke", "black")
 		.attr("stroke-width", 2)
-		.on("mouseover", function (d, event) {
-			console.log(d)
-			tooltip.style("opacity", 1)
-				.html(`
-				Country: ${d.country}<br> 
-				Continent: ${d.continent}<br>
-				Income: ${d.income}<br>
-				Population: ${d.population}<br>
-				Life Exp: ${d.life_exp}<br>`) // Add any relevant data
-		})
-		.on("mouseout", function () {
-			tooltip.style("opacity", 0);
-		})
+		.on("mouseover", tip.show)
+		.on("mouseout", tip.hide)
 		.merge(circles)
 		.transition(t)
 		.attr("cx", (d) => x(d.income))
