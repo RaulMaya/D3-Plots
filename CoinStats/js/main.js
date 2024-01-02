@@ -65,6 +65,31 @@ const line = d3.line()
 	.x(d => x(d.year))
 	.y(d => y(d.value))
 
+$(function () {
+	// Initialize the range slider
+	$("#date-slider").slider({
+		range: true,
+		min: new Date("12/01/2000").getTime(), // set the minimum date in milliseconds
+		max: new Date().getTime(), // set the maximum date to the current date
+		values: [new Date("12/05/2013").getTime(), new Date("10/31/2017").getTime()], // initial range values in milliseconds
+		slide: function (event, ui) {
+			// Format the dates and update the labels as the slider is moved
+			$("#dateLabel1").text(formatDate(ui.values[0]));
+			$("#dateLabel2").text(formatDate(ui.values[1]));
+		}
+	});
+
+	// Function to format date in dd/mm/yyyy format
+	function formatDate(milliseconds) {
+		var date = new Date(milliseconds);
+		var day = date.getDate();
+		var month = date.getMonth() + 1; // January is 0!
+		var year = date.getFullYear();
+
+		return (day < 10 ? '0' : '') + day + '/' + (month < 10 ? '0' : '') + month + '/' + year;
+	}
+});
+
 d3.json("data/example.json").then(data => {
 	// clean data
 	data.forEach(d => {
