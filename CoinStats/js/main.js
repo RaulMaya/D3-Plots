@@ -1,19 +1,32 @@
-/*
-*    main.js
-*    Mastering Data Visualization with D3.js
-*    Project 3 - CoinStats
-*/
-		
-const MARGIN = { LEFT: 20, RIGHT: 100, TOP: 50, BOTTOM: 100 }
-const WIDTH = 800 - MARGIN.LEFT - MARGIN.RIGHT
+const MARGIN = { LEFT: 100, RIGHT: 10, TOP: 10, BOTTOM: 100 }
+const WIDTH = 900 - MARGIN.LEFT - MARGIN.RIGHT
 const HEIGHT = 500 - MARGIN.TOP - MARGIN.BOTTOM
 
 const svg = d3.select("#chart-area").append("svg")
-  .attr("width", WIDTH + MARGIN.LEFT + MARGIN.RIGHT)
-  .attr("height", HEIGHT + MARGIN.TOP + MARGIN.BOTTOM)
+	.attr("width", WIDTH + MARGIN.LEFT + MARGIN.RIGHT)
+	.attr("height", HEIGHT + MARGIN.TOP + MARGIN.BOTTOM)
 
 const g = svg.append("g")
-  .attr("transform", `translate(${MARGIN.LEFT}, ${MARGIN.TOP})`)
+	.attr("transform", `translate(${MARGIN.LEFT}, ${MARGIN.TOP})`)
+
+// X label
+const xLabel = g.append("text")
+	.attr("class", "x axis-label")
+	.attr("x", WIDTH / 2)
+	.attr("y", HEIGHT + 60)
+	.attr("font-size", "20px")
+	.attr("text-anchor", "middle")
+	.text("Time")
+
+// Y label
+const yLabel = g.append("text")
+	.attr("class", "y axis-label")
+	.attr("x", - (HEIGHT / 2))
+	.attr("y", - 60)
+	.attr("font-size", "20px")
+	.attr("text-anchor", "middle")
+	.attr("transform", "rotate(-90)")
+	.text("24 Hour Trading Volume ($)")
 
 // time parser for x-scale
 const parseTime = d3.timeParse("%Y")
@@ -36,7 +49,7 @@ const xAxis = g.append("g")
 	.attr("transform", `translate(0, ${HEIGHT})`)
 const yAxis = g.append("g")
 	.attr("class", "y axis")
-    
+
 // y-axis label
 yAxis.append("text")
 	.attr("class", "axis-title")
@@ -62,7 +75,7 @@ d3.json("data/example.json").then(data => {
 	// set scale domains
 	x.domain(d3.extent(data, d => d.year))
 	y.domain([
-		d3.min(data, d => d.value) / 1.005, 
+		d3.min(data, d => d.value) / 1.005,
 		d3.max(data, d => d.value) * 1.005
 	])
 
@@ -120,6 +133,6 @@ d3.json("data/example.json").then(data => {
 		focus.select(".x-hover-line").attr("y2", HEIGHT - y(d.value))
 		focus.select(".y-hover-line").attr("x2", -x(d.year))
 	}
-	
+
 	/******************************** Tooltip Code ********************************/
 })

@@ -1,8 +1,3 @@
-/*
-*    main.js
-*    Mastering Data Visualization with D3.js
-*    Project 1 - Star Break Coffee
-*/
 const MARGIN = { left: 100, right: 10, top: 10, bottom: 100 }
 const WIDTH = 600 - MARGIN.left - MARGIN.right
 const HEIGHT = 400 - MARGIN.top - MARGIN.bottom
