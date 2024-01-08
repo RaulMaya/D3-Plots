@@ -90,7 +90,8 @@ $(function () {
 	}
 });
 
-d3.json("data/example.json").then(data => {
+d3.json("data/coins.json").then(data => {
+	console.log(data['bitcoin'])
 	// clean data
 	data.forEach(d => {
 		d.year = parseTime(d.year)
@@ -160,4 +161,27 @@ d3.json("data/example.json").then(data => {
 	}
 
 	/******************************** Tooltip Code ********************************/
+
+	console.log(data)
+	update()
 })
+
+$("#var-select")
+	.on("change", () => {
+		update()
+	})
+
+$("#coin-select")
+	.on("change", () => {
+		update()
+	})
+
+function update() {
+	const analysisVar = $("#var-select").val()
+	const coin = $("#coin-select").val()
+
+	yLabel.text(analysisVar)
+
+	console.log(analysisVar)
+	console.log(coin)
+}
