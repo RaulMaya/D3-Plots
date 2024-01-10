@@ -2,6 +2,8 @@ const MARGIN = { LEFT: 100, RIGHT: 10, TOP: 10, BOTTOM: 100 }
 const WIDTH = 900 - MARGIN.LEFT - MARGIN.RIGHT
 const HEIGHT = 500 - MARGIN.TOP - MARGIN.BOTTOM
 
+let formattedData
+
 const svg = d3.select("#chart-area").append("svg")
 	.attr("width", WIDTH + MARGIN.LEFT + MARGIN.RIGHT)
 	.attr("height", HEIGHT + MARGIN.TOP + MARGIN.BOTTOM)
@@ -31,7 +33,7 @@ const yLabel = g.append("text")
 // time parser for x-scale
 const parseTime = d3.timeParse("%Y")
 // for tooltip
-const bisectDate = d3.bisector(d => d.year).left
+const bisectDate = d3.bisector(d => d.date).left
 
 // scales
 const x = d3.scaleTime().range([0, WIDTH])
@@ -91,18 +93,28 @@ $(function () {
 });
 
 d3.json("data/coins.json").then(data => {
-	console.log(data['bitcoin'])
-	// clean data
-	data.forEach(d => {
-		d.year = parseTime(d.year)
-		d.value = Number(d.value)
+	const coin = $("#coin-select").val()
+	const analysisVar = $("#var-select").val()
+
+	formattedData = data[coin].filter(d => {
+		const dataExists = (d.date && d[analysisVar])
+		return dataExists
+	}).map(d => {
+		let parts = d.date.split('/');
+		let reformattedDate = `${parts[1]}/${parts[0]}/${parts[2]}`;
+		d.date = new Date(reformattedDate)
+		d.year = d.date.getFullYear()
+		d.value = Number(d[analysisVar])
+		return d
 	})
 
+	console.log(formattedData)
+
 	// set scale domains
-	x.domain(d3.extent(data, d => d.year))
+	x.domain(d3.extent(formattedData, d => d.date))
 	y.domain([
-		d3.min(data, d => d.value) / 1.005,
-		d3.max(data, d => d.value) * 1.005
+		d3.min(formattedData, d => d.value) / 1.005,
+		d3.max(formattedData, d => d.value) * 1.005
 	])
 
 	// generate axes once scales have been set
@@ -115,7 +127,7 @@ d3.json("data/coins.json").then(data => {
 		.attr("fill", "none")
 		.attr("stroke", "grey")
 		.attr("stroke-width", "3px")
-		.attr("d", line(data))
+		.attr("d", line(formattedData))
 
 	/******************************** Tooltip Code ********************************/
 
@@ -150,19 +162,18 @@ d3.json("data/coins.json").then(data => {
 
 	function mousemove() {
 		const x0 = x.invert(d3.mouse(this)[0])
-		const i = bisectDate(data, x0, 1)
-		const d0 = data[i - 1]
-		const d1 = data[i]
-		const d = x0 - d0.year > d1.year - x0 ? d1 : d0
-		focus.attr("transform", `translate(${x(d.year)}, ${y(d.value)})`)
+		const i = bisectDate(formattedData, x0, 1)
+		const d0 = formattedData[i - 1]
+		const d1 = formattedData[i]
+		const d = x0 - d0.date > d1.date - x0 ? d1 : d0
+		focus.attr("transform", `translate(${x(d.date)}, ${y(d.value)})`)
 		focus.select("text").text(d.value)
 		focus.select(".x-hover-line").attr("y2", HEIGHT - y(d.value))
-		focus.select(".y-hover-line").attr("x2", -x(d.year))
+		focus.select(".y-hover-line").attr("x2", -x(d.date))
 	}
 
 	/******************************** Tooltip Code ********************************/
 
-	console.log(data)
 	update()
 })
 
