@@ -2,16 +2,25 @@ const MARGIN = { LEFT: 100, RIGHT: 150, TOP: 10, BOTTOM: 100 }
 const WIDTH = 900 - MARGIN.LEFT - MARGIN.RIGHT
 const HEIGHT = 500 - MARGIN.TOP - MARGIN.BOTTOM
 
-let formattedData
-let coin = $("#coin-select").val()
-let analysisVar = $("#var-select").val()
-
 const svg = d3.select("#chart-area").append("svg")
 	.attr("width", WIDTH + MARGIN.LEFT + MARGIN.RIGHT)
 	.attr("height", HEIGHT + MARGIN.TOP + MARGIN.BOTTOM)
 
 const g = svg.append("g")
 	.attr("transform", `translate(${MARGIN.LEFT}, ${MARGIN.TOP})`)
+
+// time parsers/formatters
+const parseTime = d3.timeParse("%d/%m/%Y")
+const formatTime = d3.timeFormat("%d/%m/%Y")
+// for tooltip
+const bisectDate = d3.bisector(d => d.date).left
+
+// add the line for the first time
+g.append("path")
+	.attr("class", "line")
+	.attr("fill", "none")
+	.attr("stroke", "grey")
+	.attr("stroke-width", "3px")
 
 // X label
 const xLabel = g.append("text")
@@ -30,11 +39,6 @@ const yLabel = g.append("text")
 	.attr("font-size", "20px")
 	.attr("text-anchor", "middle")
 	.attr("transform", "rotate(-90)")
-
-// time parser for x-scale
-const parseTime = d3.timeParse("%d/%m/%Y")
-// for tooltip
-const bisectDate = d3.bisector(d => d.date).left
 
 // scales
 const x = d3.scaleTime().range([0, WIDTH])
@@ -85,40 +89,37 @@ $("#date-slider").slider({
 		parseTime("31/10/2017").getTime()
 	],
 	slide: (event, ui) => {
-		$("#dateLabel1").text(parseTime(new Date(ui.values[0])))
-		$("#dateLabel2").text(parseTime(new Date(ui.values[1])))
+		$("#dateLabel1").text(formatTime(new Date(ui.values[0])))
+		$("#dateLabel2").text(formatTime(new Date(ui.values[1])))
 		update()
 	}
 })
-
 
 d3.json("data/coins.json").then(data => {
 	dataObj = {}
 	Object.keys(data).forEach((coin) => {
 		dataObj[coin] = data[coin].filter(d => {
-			const dataExists = (d.date && d[analysisVar] && d["price_usd"] != null)
+			const dataExists = (d.date && d["price_usd"] != null)
 			return dataExists
 		}).map(d => {
 			d["date"] = parseTime(d["date"])
 			d["price_usd"] = Number(d["price_usd"])
 			d["24h_vol"] = Number(d["24h_vol"])
 			d["market_cap"] = Number(d["market_cap"])
-			d.value = Number(d[analysisVar])
 			return d
 		})
 	})
 
-	console.log(dataObj)
 	update()
 })
 
 function update() {
-	coin = $("#coin-select").val()
-	analysisVar = $("#var-select").val()
+	const t = d3.transition().duration(5000)
 
+	// filter data based on selections
+	const coin = $("#coin-select").val()
+	const analysisVar = $("#var-select").val()
 	const coinFilter = dataObj[coin]
-
-	console.log(coinFilter)
 
 	const sliderValues = $("#date-slider").slider("values")
 	const dataTimeFiltered = coinFilter.filter(d => {
@@ -145,9 +146,9 @@ function update() {
 
 	// update axes
 	xAxisCall.scale(x)
-	xAxis.call(xAxisCall)
+	xAxis.transition(t).call(xAxisCall)
 	yAxisCall.scale(y)
-	yAxis.call(yAxisCall.tickFormat(formatAbbreviation))
+	yAxis.transition(t).call(yAxisCall.tickFormat(formatAbbreviation))
 
 
 	d3.select(".focus").remove()
@@ -200,12 +201,15 @@ function update() {
 
 	// line path generator
 	line = d3.line()
-		.x(d => x(d[date]))
+		.x(d => x(d.date))
 		.y(d => y(d[analysisVar]))
 
 	// Update our line path
 	g.select(".line")
+		.transition(t)
 		.attr("d", line(dataTimeFiltered))
+
+
 
 	let getAnalysisValue = () => {
 		if (analysisVar == "price_usd") {
