@@ -1,8 +1,10 @@
-const MARGIN = { LEFT: 100, RIGHT: 10, TOP: 10, BOTTOM: 100 }
+const MARGIN = { LEFT: 100, RIGHT: 150, TOP: 10, BOTTOM: 100 }
 const WIDTH = 900 - MARGIN.LEFT - MARGIN.RIGHT
 const HEIGHT = 500 - MARGIN.TOP - MARGIN.BOTTOM
 
 let formattedData
+let coin = $("#coin-select").val()
+let analysisVar = $("#var-select").val()
 
 const svg = d3.select("#chart-area").append("svg")
 	.attr("width", WIDTH + MARGIN.LEFT + MARGIN.RIGHT)
@@ -28,10 +30,9 @@ const yLabel = g.append("text")
 	.attr("font-size", "20px")
 	.attr("text-anchor", "middle")
 	.attr("transform", "rotate(-90)")
-	.text("24 Hour Trading Volume ($)")
 
 // time parser for x-scale
-const parseTime = d3.timeParse("%Y")
+const parseTime = d3.timeParse("%d/%m/%Y")
 // for tooltip
 const bisectDate = d3.bisector(d => d.date).left
 
@@ -67,54 +68,112 @@ const line = d3.line()
 	.x(d => x(d.year))
 	.y(d => y(d.value))
 
-$(function () {
-	// Initialize the range slider
-	$("#date-slider").slider({
-		range: true,
-		min: new Date("12/01/2000").getTime(), // set the minimum date in milliseconds
-		max: new Date().getTime(), // set the maximum date to the current date
-		values: [new Date("12/05/2013").getTime(), new Date("10/31/2017").getTime()], // initial range values in milliseconds
-		slide: function (event, ui) {
-			// Format the dates and update the labels as the slider is moved
-			$("#dateLabel1").text(formatDate(ui.values[0]));
-			$("#dateLabel2").text(formatDate(ui.values[1]));
-		}
-	});
-
-	// Function to format date in dd/mm/yyyy format
-	function formatDate(milliseconds) {
-		var date = new Date(milliseconds);
-		var day = date.getDate();
-		var month = date.getMonth() + 1; // January is 0!
-		var year = date.getFullYear();
-
-		return (day < 10 ? '0' : '') + day + '/' + (month < 10 ? '0' : '') + month + '/' + year;
+// add jQuery UI slider
+$("#date-slider").slider({
+	range: true,
+	max: parseTime("31/10/2017").getTime(),
+	min: parseTime("12/5/2013").getTime(),
+	step: 86400000, // one day
+	values: [
+		parseTime("12/5/2013").getTime(),
+		parseTime("31/10/2017").getTime()
+	],
+	slide: (event, ui) => {
+		$("#dateLabel1").text(formatTime(new Date(ui.values[0])))
+		$("#dateLabel2").text(formatTime(new Date(ui.values[1])))
+		update()
 	}
-});
-
+})
 d3.json("data/coins.json").then(data => {
-	const coin = $("#coin-select").val()
-	const analysisVar = $("#var-select").val()
+	update(data)
+
+	$("#var-select")
+		.on("change", () => {
+			update(data)
+		})
+
+	$("#coin-select")
+		.on("change", () => {
+			update(data)
+		})
+})
+
+
+/******************************** Tooltip Code ********************************/
+
+const focus = g.append("g")
+	.attr("class", "focus")
+	.style("display", "none")
+
+focus.append("line")
+	.attr("class", "x-hover-line hover-line")
+	.attr("y1", 0)
+	.attr("y2", HEIGHT)
+
+focus.append("line")
+	.attr("class", "y-hover-line hover-line")
+	.attr("x1", 0)
+	.attr("x2", WIDTH)
+
+focus.append("circle")
+	.attr("r", 7.5)
+
+focus.append("text")
+	.attr("x", 15)
+	.attr("dy", ".31em")
+
+g.append("rect")
+	.attr("class", "overlay")
+	.attr("width", WIDTH)
+	.attr("height", HEIGHT)
+	.on("mouseover", () => focus.style("display", null))
+	.on("mouseout", () => focus.style("display", "none"))
+	.on("mousemove", mousemove)
+
+function mousemove() {
+	const x0 = x.invert(d3.mouse(this)[0])
+	const i = bisectDate(formattedData, x0, 1)
+	const d0 = formattedData[i - 1]
+	const d1 = formattedData[i]
+	const d = x0 - d0.date > d1.date - x0 ? d1 : d0
+	focus.attr("transform", `translate(${x(d.date)}, ${y(d.value)})`)
+	focus.select("text").text(d.value)
+	focus.select(".x-hover-line").attr("y2", HEIGHT - y(d.value))
+	focus.select(".y-hover-line").attr("x2", -x(d.date))
+}
+
+/******************************** Tooltip Code ********************************/
+
+
+
+
+function update(data) {
+	coin = $("#coin-select").val()
+	analysisVar = $("#var-select").val()
 
 	formattedData = data[coin].filter(d => {
-		const dataExists = (d.date && d[analysisVar])
+		const dataExists = (d.date && d[analysisVar] && d["price_usd"] != null)
 		return dataExists
 	}).map(d => {
-		let parts = d.date.split('/');
-		let reformattedDate = `${parts[1]}/${parts[0]}/${parts[2]}`;
-		d.date = new Date(reformattedDate)
-		d.year = d.date.getFullYear()
+		d["date"] = parseTime(d["date"])
+		d["price_usd"] = Number(d["price_usd"])
+		d["24h_vol"] = Number(d["24h_vol"])
+		d["market_cap"] = Number(d["market_cap"])
 		d.value = Number(d[analysisVar])
 		return d
 	})
 
-	console.log(formattedData)
+	const sliderValues = $("#date-slider").slider("values")
+	const dataTimeFiltered = formattedData.filter(d => {
+		return ((d.date >= sliderValues[0]) && (d.date <= sliderValues[1]))
+	})
 
+	console.log(dataTimeFiltered)
 	// set scale domains
-	x.domain(d3.extent(formattedData, d => d.date))
+	x.domain(d3.extent(dataTimeFiltered, d => d.date))
 	y.domain([
-		d3.min(formattedData, d => d.value) / 1.005,
-		d3.max(formattedData, d => d.value) * 1.005
+		d3.min(dataTimeFiltered, d => d.analysisVar) / 1.005,
+		d3.max(dataTimeFiltered, d => d.analysisVar) * 1.005
 	])
 
 	// generate axes once scales have been set
@@ -129,70 +188,15 @@ d3.json("data/coins.json").then(data => {
 		.attr("stroke-width", "3px")
 		.attr("d", line(formattedData))
 
-	/******************************** Tooltip Code ********************************/
-
-	const focus = g.append("g")
-		.attr("class", "focus")
-		.style("display", "none")
-
-	focus.append("line")
-		.attr("class", "x-hover-line hover-line")
-		.attr("y1", 0)
-		.attr("y2", HEIGHT)
-
-	focus.append("line")
-		.attr("class", "y-hover-line hover-line")
-		.attr("x1", 0)
-		.attr("x2", WIDTH)
-
-	focus.append("circle")
-		.attr("r", 7.5)
-
-	focus.append("text")
-		.attr("x", 15)
-		.attr("dy", ".31em")
-
-	g.append("rect")
-		.attr("class", "overlay")
-		.attr("width", WIDTH)
-		.attr("height", HEIGHT)
-		.on("mouseover", () => focus.style("display", null))
-		.on("mouseout", () => focus.style("display", "none"))
-		.on("mousemove", mousemove)
-
-	function mousemove() {
-		const x0 = x.invert(d3.mouse(this)[0])
-		const i = bisectDate(formattedData, x0, 1)
-		const d0 = formattedData[i - 1]
-		const d1 = formattedData[i]
-		const d = x0 - d0.date > d1.date - x0 ? d1 : d0
-		focus.attr("transform", `translate(${x(d.date)}, ${y(d.value)})`)
-		focus.select("text").text(d.value)
-		focus.select(".x-hover-line").attr("y2", HEIGHT - y(d.value))
-		focus.select(".y-hover-line").attr("x2", -x(d.date))
+	let getAnalysisValue = () => {
+		if (analysisVar == "price_usd") {
+			return "Price in dollars"
+		} else if (analysisVar == "market_cap") {
+			return "Market capitalization"
+		} else if (analysisVar == "24h_vol") {
+			return "24 hour trading volume"
+		}
 	}
 
-	/******************************** Tooltip Code ********************************/
-
-	update()
-})
-
-$("#var-select")
-	.on("change", () => {
-		update()
-	})
-
-$("#coin-select")
-	.on("change", () => {
-		update()
-	})
-
-function update() {
-	const analysisVar = $("#var-select").val()
-	const coin = $("#coin-select").val()
-
-	yLabel.text(analysisVar)
-
-	console.log(analysisVar)
-	console.log(coin)
+	yLabel.text(getAnalysisValue())
 }
