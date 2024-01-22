@@ -63,10 +63,16 @@ yAxis.append("text")
 	.attr("fill", "#5D6971")
 	.text("Population)")
 
-// line path generator
-const line = d3.line()
-	.x(d => x(d.year))
-	.y(d => y(d.value))
+
+$("#var-select")
+	.on("change", () => {
+		update()
+	})
+
+$("#coin-select")
+	.on("change", () => {
+		update()
+	})
 
 // add jQuery UI slider
 $("#date-slider").slider({
@@ -79,122 +85,135 @@ $("#date-slider").slider({
 		parseTime("31/10/2017").getTime()
 	],
 	slide: (event, ui) => {
-		$("#dateLabel1").text(formatTime(new Date(ui.values[0])))
-		$("#dateLabel2").text(formatTime(new Date(ui.values[1])))
+		$("#dateLabel1").text(parseTime(new Date(ui.values[0])))
+		$("#dateLabel2").text(parseTime(new Date(ui.values[1])))
 		update()
 	}
 })
+
+
 d3.json("data/coins.json").then(data => {
-	update(data)
-
-	$("#var-select")
-		.on("change", () => {
-			update(data)
+	dataObj = {}
+	Object.keys(data).forEach((coin) => {
+		dataObj[coin] = data[coin].filter(d => {
+			const dataExists = (d.date && d[analysisVar] && d["price_usd"] != null)
+			return dataExists
+		}).map(d => {
+			d["date"] = parseTime(d["date"])
+			d["price_usd"] = Number(d["price_usd"])
+			d["24h_vol"] = Number(d["24h_vol"])
+			d["market_cap"] = Number(d["market_cap"])
+			d.value = Number(d[analysisVar])
+			return d
 		})
+	})
 
-	$("#coin-select")
-		.on("change", () => {
-			update(data)
-		})
+	console.log(dataObj)
+	update()
 })
 
-
-/******************************** Tooltip Code ********************************/
-
-const focus = g.append("g")
-	.attr("class", "focus")
-	.style("display", "none")
-
-focus.append("line")
-	.attr("class", "x-hover-line hover-line")
-	.attr("y1", 0)
-	.attr("y2", HEIGHT)
-
-focus.append("line")
-	.attr("class", "y-hover-line hover-line")
-	.attr("x1", 0)
-	.attr("x2", WIDTH)
-
-focus.append("circle")
-	.attr("r", 7.5)
-
-focus.append("text")
-	.attr("x", 15)
-	.attr("dy", ".31em")
-
-g.append("rect")
-	.attr("class", "overlay")
-	.attr("width", WIDTH)
-	.attr("height", HEIGHT)
-	.on("mouseover", () => focus.style("display", null))
-	.on("mouseout", () => focus.style("display", "none"))
-	.on("mousemove", mousemove)
-
-function mousemove() {
-	const x0 = x.invert(d3.mouse(this)[0])
-	const i = bisectDate(formattedData, x0, 1)
-	const d0 = formattedData[i - 1]
-	const d1 = formattedData[i]
-	const d = x0 - d0.date > d1.date - x0 ? d1 : d0
-	focus.attr("transform", `translate(${x(d.date)}, ${y(d.value)})`)
-	focus.select("text").text(d.value)
-	focus.select(".x-hover-line").attr("y2", HEIGHT - y(d.value))
-	focus.select(".y-hover-line").attr("x2", -x(d.date))
-}
-
-/******************************** Tooltip Code ********************************/
-
-
-
-
-function update(data) {
+function update() {
 	coin = $("#coin-select").val()
 	analysisVar = $("#var-select").val()
 
-	formattedData = data[coin].filter(d => {
-		const dataExists = (d.date && d[analysisVar] && d["price_usd"] != null)
-		return dataExists
-	}).map(d => {
-		d["date"] = parseTime(d["date"])
-		d["price_usd"] = Number(d["price_usd"])
-		d["24h_vol"] = Number(d["24h_vol"])
-		d["market_cap"] = Number(d["market_cap"])
-		d.value = Number(d[analysisVar])
-		return d
-	})
+	const coinFilter = dataObj[coin]
+
+	console.log(coinFilter)
 
 	const sliderValues = $("#date-slider").slider("values")
-	const dataTimeFiltered = formattedData.filter(d => {
+	const dataTimeFiltered = coinFilter.filter(d => {
 		return ((d.date >= sliderValues[0]) && (d.date <= sliderValues[1]))
 	})
 
-	console.log(dataTimeFiltered)
 	// set scale domains
 	x.domain(d3.extent(dataTimeFiltered, d => d.date))
 	y.domain([
-		d3.min(dataTimeFiltered, d => d.analysisVar) / 1.005,
-		d3.max(dataTimeFiltered, d => d.analysisVar) * 1.005
+		d3.min(dataTimeFiltered, d => d[analysisVar]) / 1.005,
+		d3.max(dataTimeFiltered, d => d[analysisVar]) * 1.005
 	])
 
-	// generate axes once scales have been set
-	xAxis.call(xAxisCall.scale(x))
-	yAxis.call(yAxisCall.scale(y))
+	// fix for format values
+	const formatSi = d3.format(".2s")
+	function formatAbbreviation(x) {
+		const s = formatSi(x)
+		switch (s[s.length - 1]) {
+			case "G": return s.slice(0, -1) + "B" // billions
+			case "k": return s.slice(0, -1) + "K" // thousands
+		}
+		return s
+	}
 
-	// add line to chart
-	g.append("path")
-		.attr("class", "line")
-		.attr("fill", "none")
-		.attr("stroke", "grey")
-		.attr("stroke-width", "3px")
-		.attr("d", line(formattedData))
+	// update axes
+	xAxisCall.scale(x)
+	xAxis.call(xAxisCall)
+	yAxisCall.scale(y)
+	yAxis.call(yAxisCall.tickFormat(formatAbbreviation))
+
+
+	d3.select(".focus").remove()
+	d3.select(".overlay").remove()
+
+	/******************************** Tooltip Code ********************************/
+
+	const focus = g.append("g")
+		.attr("class", "focus")
+		.style("display", "none")
+
+	focus.append("line")
+		.attr("class", "x-hover-line hover-line")
+		.attr("y1", 0)
+		.attr("y2", HEIGHT)
+
+	focus.append("line")
+		.attr("class", "y-hover-line hover-line")
+		.attr("x1", 0)
+		.attr("x2", WIDTH)
+
+	focus.append("circle")
+		.attr("r", 7.5)
+
+	focus.append("text")
+		.attr("x", 15)
+		.attr("dy", ".31em")
+
+	g.append("rect")
+		.attr("class", "overlay")
+		.attr("width", WIDTH)
+		.attr("height", HEIGHT)
+		.on("mouseover", () => focus.style("display", null))
+		.on("mouseout", () => focus.style("display", "none"))
+		.on("mousemove", mousemove)
+
+	function mousemove() {
+		const x0 = x.invert(d3.mouse(this)[0])
+		const i = bisectDate(dataTimeFiltered, x0, 1)
+		const d0 = dataTimeFiltered[i - 1]
+		const d1 = dataTimeFiltered[i]
+		const d = x0 - d0.date > d1.date - x0 ? d1 : d0
+		focus.attr("transform", `translate(${x(d.date)}, ${y(d[analysisVar])})`)
+		focus.select("text").text(d[analysisVar])
+		focus.select(".x-hover-line").attr("y2", HEIGHT - y(d[analysisVar]))
+		focus.select(".y-hover-line").attr("x2", -x(d.date))
+	}
+
+	/******************************** Tooltip Code ********************************/
+
+	// line path generator
+	line = d3.line()
+		.x(d => x(d[date]))
+		.y(d => y(d[analysisVar]))
+
+	// Update our line path
+	g.select(".line")
+		.attr("d", line(dataTimeFiltered))
 
 	let getAnalysisValue = () => {
 		if (analysisVar == "price_usd") {
-			return "Price in dollars"
+			return "Price ($)"
 		} else if (analysisVar == "market_cap") {
-			return "Market capitalization"
+			return "Market Capitalization"
 		} else if (analysisVar == "24h_vol") {
-			return "24 hour trading volume"
+			return "24 Hour Trading Volume"
 		}
 	}
 
