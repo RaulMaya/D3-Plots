@@ -75,6 +75,14 @@ $("#var-select")
 $("#coin-select")
 	.on("change", update)
 
+// Add the line for the first time
+g.append("path")
+	.attr("class", "line")
+	.attr("fill", "none")
+	.attr("stroke", "blue")
+	.attr("stroke-width", "2px")
+
+
 
 d3.json("data/coins.json").then(data => {
 	dataObj = {}
@@ -172,10 +180,34 @@ function update() {
 		const d1 = dataFiltered[i]
 		const d = x0 - d0.date > d1.date - x0 ? d1 : d0
 		focus.attr("transform", `translate(${x(d.date)}, ${y(d[analysisVar])})`)
-		focus.select("text").text(d[analysisVar])
+		focus.select("text").text(`${d[analysisVar]}`)
 		focus.select(".x-hover-line").attr("y2", HEIGHT - y(d[analysisVar]))
 		focus.select(".y-hover-line").attr("x2", -x(d.date))
 	}
 
 	/******************************** Tooltip Code ********************************/
+
+	// line path generator
+	line = d3.line()
+		.x(d => x(d.date))
+		.y(d => y(d[analysisVar]))
+
+	// Update our line path
+	g.select(".line")
+		.transition(t)
+		.attr("d", line(dataFiltered))
+
+
+
+	let getAnalysisValue = () => {
+		if (analysisVar == "price_usd") {
+			return "Price ($)"
+		} else if (analysisVar == "market_cap") {
+			return "Market Capitalization"
+		} else if (analysisVar == "24h_vol") {
+			return "24 Hour Trading Volume"
+		}
+	}
+
+	yLabel.text(getAnalysisValue())
 }
