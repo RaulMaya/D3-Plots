@@ -129,21 +129,6 @@ function update() {
 		d3.max(dataFiltered, d => d[analysisVar]) * 1.005
 	])
 
-	const mean = d3.mean(dataFiltered, d => d[analysisVar]);
-
-	const colorScale = d => {
-		const deviation = d[analysisVar] - mean;
-		if (deviation > 0) {
-			return "lightgreen";  // Value is above the mean
-		} else if (deviation < 0) {
-			return "red";    // Value is below the mean
-		} else {
-			return "orange"; // Value is close to the mean
-		}
-	};
-
-
-
 	// fix for format values
 	const formatSi = d3.format(".2s")
 	function formatAbbreviation(x) {
@@ -172,13 +157,6 @@ function update() {
 		.selectAll(".tick line")
 		.attr("stroke", "gray")
 		.attr("stroke-opacity", 0.7);
-
-
-	let segments = dataFiltered.map((d, i) => {
-		if (i == dataFiltered.length - 1) return null;
-		return [dataFiltered[i], dataFiltered[i + 1]];
-	}).filter(d => d); // Remove the null at the end
-
 
 
 	/******************************** Tooltip Code ********************************/
@@ -230,6 +208,24 @@ function update() {
 	}
 
 	/******************************** Tooltip Code ********************************/
+	const mean = d3.mean(dataFiltered, d => d[analysisVar]);
+
+	const colorScale = d => {
+		const deviation = d[analysisVar] - mean;
+		if (deviation > 0) {
+			return "lightgreen";  // Value is above the mean
+		} else if (deviation < 0) {
+			return "red";    // Value is below the mean
+		} else {
+			return "orange"; // Value is close to the mean
+		}
+	};
+
+
+	let segments = dataFiltered.map((d, i) => {
+		if (i == dataFiltered.length - 1) return null;
+		return [dataFiltered[i], dataFiltered[i + 1]];
+	}).filter(d => d); // Remove the null at the end
 
 
 
