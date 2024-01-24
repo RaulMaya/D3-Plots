@@ -14,6 +14,13 @@ const svg = d3.select("#chart-area").append("svg")
 const g = svg.append("g")
 	.attr("transform", `translate(${MARGIN.LEFT}, ${MARGIN.TOP})`)
 
+// Append the background rectangle here
+g.append("rect")
+	.attr("class", "background")
+	.attr("width", WIDTH)
+	.attr("height", HEIGHT)
+	.attr("fill", "gainsboro"); // or a
+
 // Creating the scales
 const x = d3.scaleTime().range([0, WIDTH])
 const y = d3.scaleLinear().range([HEIGHT, 0])
@@ -81,9 +88,6 @@ g.append("path")
 	.attr("stroke-width", "2px")
 
 
-
-
-
 d3.json("data/coins.json").then(data => {
 	dataObj = {}
 	Object.keys(data).forEach((coin) => {
@@ -107,6 +111,7 @@ function update() {
 	// Defining the transition and its duration
 	const t = d3.transition().duration(1500)
 
+
 	// Filter based in coin selection and stock variable selection
 	const coin = $("#coin-select").val()
 	const analysisVar = $("#var-select").val()
@@ -124,17 +129,25 @@ function update() {
 		d3.max(dataFiltered, d => d[analysisVar]) * 1.005
 	])
 
-	var colorScale = d3.scaleSequential(d3.interpolateBlues)
-    .domain([
-		d3.min(dataFiltered, d => d[analysisVar]) / 1.005,
-		d3.max(dataFiltered, d => d[analysisVar]) * 1.005
-	])
+	const mean = d3.mean(dataFiltered, d => d[analysisVar]);
+
+	const colorScale = d => {
+		const deviation = d[analysisVar] - mean;
+		if (deviation > 0) {
+			return "lightgreen";  // Value is above the mean
+		} else if (deviation < 0) {
+			return "red";    // Value is below the mean
+		} else {
+			return "orange"; // Value is close to the mean
+		}
+	};
+
+
 
 	// fix for format values
 	const formatSi = d3.format(".2s")
 	function formatAbbreviation(x) {
 		const s = formatSi(x)
-		console.log(s[s.length - 1])
 		switch (s[s.length - 1]) {
 			case "G": return s.slice(0, -1) + "B" // billions
 			case "k": return s.slice(0, -1) + "K" // thousands
@@ -145,26 +158,35 @@ function update() {
 	// update axes
 	xAxisCall.scale(x)
 	xAxis.transition(t).call(xAxisCall)
-	
-    // Modify y-axis
-    yAxisCall.scale(y)
-        .tickSize(-WIDTH)
-        .tickFormat(formatAbbreviation)
-        .tickSizeOuter(0);
 
-    // Append y-axis and style tick lines for grid
-    g.select(".y.axis")
-        .transition(t)
-        .call(yAxisCall)
-        .selectAll(".tick line")
-        .attr("stroke", "lightgray")
-        .attr("stroke-opacity", 0.7);
+	// Modify y-axis
+	yAxisCall.scale(y)
+		.tickSize(-WIDTH)
+		.tickFormat(formatAbbreviation)
+		.tickSizeOuter(0);
+
+	// Append y-axis and style tick lines for grid
+	g.select(".y.axis")
+		.transition(t)
+		.call(yAxisCall)
+		.selectAll(".tick line")
+		.attr("stroke", "gray")
+		.attr("stroke-opacity", 0.7);
+
+
+	let segments = dataFiltered.map((d, i) => {
+		if (i == dataFiltered.length - 1) return null;
+		return [dataFiltered[i], dataFiltered[i + 1]];
+	}).filter(d => d); // Remove the null at the end
+
+
 
 	/******************************** Tooltip Code ********************************/
 
+	// Now append the tooltip elements
 	const focus = g.append("g")
 		.attr("class", "focus")
-		.style("display", "none")
+		.style("display", "none");
 
 	focus.append("line")
 		.attr("class", "x-hover-line hover-line")
@@ -183,13 +205,17 @@ function update() {
 		.attr("x", 15)
 		.attr("dy", ".31em")
 
+	// Append the overlay rect for tooltip interaction
 	g.append("rect")
 		.attr("class", "overlay")
 		.attr("width", WIDTH)
 		.attr("height", HEIGHT)
+		.style("fill", "none") // Make it transparent
+		.style("pointer-events", "all")
 		.on("mouseover", () => focus.style("display", null))
 		.on("mouseout", () => focus.style("display", "none"))
-		.on("mousemove", mousemove)
+		.on("mousemove", mousemove);
+
 
 	function mousemove() {
 		const x0 = x.invert(d3.mouse(this)[0])
@@ -205,19 +231,24 @@ function update() {
 
 	/******************************** Tooltip Code ********************************/
 
-	// line path generator
-	line = d3.line()
-		.x(d => x(d.date))
-		.y(d => y(d[analysisVar]))
 
-	// Update our line path
-	g.select(".line")
-		.transition(t)
-		.attr("d", line(dataFiltered))
-		.attr("fill", "red")
-		.attr("fill", d => colorScale(d.value))
-		.attr("stroke", d => colorScale(d.value))
-		.attr("stroke-width", "2px")
+
+	const lineGenerator = d3.line()
+		.x(d => x(d.date))
+		.y(d => y(d[analysisVar]));
+
+	const lines = g.selectAll(".line-segment")
+		.data(segments);
+
+	lines.enter()
+		.append("path")
+		.merge(lines)
+		.attr("class", "line-segment")
+		.attr("d", d => lineGenerator(d))
+		.attr("stroke", d => colorScale(d[0])) // Apply color based on the first point of the segment
+		.attr("stroke-width", "2px");
+
+	lines.exit().remove();
 
 
 

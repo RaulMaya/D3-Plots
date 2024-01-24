@@ -29,7 +29,7 @@
 }
 
 .overlay {
-  fill: none;
+  fill: gainsboro;
   pointer-events: all;
 }
 
