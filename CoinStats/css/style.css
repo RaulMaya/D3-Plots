@@ -19,7 +19,6 @@
 
 .axis path, .axis line {
   fill: none;
-  stroke: #D4D8DA;
   stroke-width: 2px;
   shape-rendering: crispEdges;
 }
@@ -53,6 +52,4 @@
 
 .line {
   fill: none;
-  stroke-width: 3px;
-  stroke: grey;
 }

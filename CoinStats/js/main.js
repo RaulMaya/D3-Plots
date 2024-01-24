@@ -78,9 +78,9 @@ $("#coin-select")
 // Add the line for the first time
 g.append("path")
 	.attr("class", "line")
-	.attr("fill", "none")
-	.attr("stroke", "blue")
 	.attr("stroke-width", "2px")
+
+
 
 
 
@@ -124,6 +124,12 @@ function update() {
 		d3.max(dataFiltered, d => d[analysisVar]) * 1.005
 	])
 
+	var colorScale = d3.scaleSequential(d3.interpolateBlues)
+    .domain([
+		d3.min(dataFiltered, d => d[analysisVar]) / 1.005,
+		d3.max(dataFiltered, d => d[analysisVar]) * 1.005
+	])
+
 	// fix for format values
 	const formatSi = d3.format(".2s")
 	function formatAbbreviation(x) {
@@ -139,8 +145,20 @@ function update() {
 	// update axes
 	xAxisCall.scale(x)
 	xAxis.transition(t).call(xAxisCall)
-	yAxisCall.scale(y)
-	yAxis.transition(t).call(yAxisCall.tickFormat(formatAbbreviation))
+	
+    // Modify y-axis
+    yAxisCall.scale(y)
+        .tickSize(-WIDTH)
+        .tickFormat(formatAbbreviation)
+        .tickSizeOuter(0);
+
+    // Append y-axis and style tick lines for grid
+    g.select(".y.axis")
+        .transition(t)
+        .call(yAxisCall)
+        .selectAll(".tick line")
+        .attr("stroke", "lightgray")
+        .attr("stroke-opacity", 0.7);
 
 	/******************************** Tooltip Code ********************************/
 
@@ -196,6 +214,10 @@ function update() {
 	g.select(".line")
 		.transition(t)
 		.attr("d", line(dataFiltered))
+		.attr("fill", "red")
+		.attr("fill", d => colorScale(d.value))
+		.attr("stroke", d => colorScale(d.value))
+		.attr("stroke-width", "2px")
 
 
 
